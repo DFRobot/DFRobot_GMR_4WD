@@ -17,18 +17,27 @@
  *	author:	lisper <lisper.li@dfrobot.com> 
  *	board: mega2560
  */
+
 #include <Metro.h>
-#include <DFRobot_utility.h>
 #include <Wire.h>
+
+#include <DFRobot_utility.h>
+#include <hcr_4wd.h>
+
+#define CMD_CTRL_MOTOR		0x03
+#define CMD_REQUEST		0x55
+#define CMD_REQUEST_STRING	0x56
+#define CMD_RETURN		0x57
 
 #define SerialPort Serial2
 
-#define IIC_SLAVE_ADDR 10
+#define IIC_SLAVE 10
 
 
 #define ID 0x10
 
 #define IIC_SEND_SIZE  11
+#define IIC_BACK_SIZE  11
 #define BACK_SIZE 16
 #define SERIAL_MAX_SIZE 25
 #define SERIAL_SIZE 11
@@ -39,18 +48,13 @@ uint8_t cmdBuffer[SERIAL_MAX_SIZE];
 //
 void setup() {
 	Wire.begin(); // join i2c bus (address optional for master)
-	SerialInit();
+	Serial.begin(9600);
+	SerialPort.begin(9600);
 }
 
 //
 void loop() {
 	CommReader();
-}
-
-//
-void SerialInit() { 
-	Serial.begin(9600);
-	SerialPort.begin(9600);
 }
 
 //read command from serial
@@ -70,13 +74,16 @@ void CommReader () {
 //parse command that read from serial
 void parseCmd (uint8_t *theCmdBuf, uint8_t theLeng) {  //feedback measure value
 	switch (theCmdBuf[4]) {
-		case 0x03:  //control motor
-			iicSend (IIC_SLAVE_ADDR, theCmdBuf, theLeng);
+		case CMD_CTRL_MOTOR:  //control motor
+			iicWrite (IIC_SLAVE, theCmdBuf, theLeng);
 			break;
-		case 0x55:  //request data from iic
-			delay (10);
-			Wire.requestFrom(IIC_SLAVE_ADDR, 11);
-			receiveEvent ();
+		case CMD_REQUEST:  //request data from iic
+			delay (5);
+			receiveEvent (false);
+			break;
+		case CMD_REQUEST_STRING:
+			delay (5);
+			receiveEvent (true);
 			break;
 	}
 }
@@ -86,107 +93,40 @@ void parseCmd (uint8_t *theCmdBuf, uint8_t theLeng) {  //feedback measure value
 
 
 //i2c receiveEvent
-void receiveEvent () {
-	uint8_t cmdBuf[11];
-	int length = iicRead (cmdBuf);
-	if (length != 11) {
+void receiveEvent (boolean isString) {
+	uint8_t cmdBuf[IIC_BACK_SIZE];
+	int length = iicRead (IIC_SLAVE, cmdBuf, IIC_BACK_SIZE);
+	if (length != IIC_BACK_SIZE) {
 		Serial.println ("error! receive length error!");
 		return;
 	}
 	Serial.print ("receive ");
-	serialHex (cmdBuf, 11);
-	uint8_t backData[BACK_SIZE] = {0x55, 0xaa, ID, 0x08, 0x56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0d, 0x0a};
-	for (int i=2; i<10; i++) {
-		backData[i+3] = cmdBuf[i];
+	serialHex (cmdBuf, IIC_BACK_SIZE);
+	if (isString) {
+		// Serial.print ("left:");
+		// Serial.print (*(long*)(cmdBuf+2));
+		// Serial.print ("cm  ");
+		// Serial.print ("right:");
+		// Serial.print (*(long*)(cmdBuf+2+4));
+		// Serial.println ("cm");
+
+		SerialPort.print ("left:");
+		SerialPort.print (*(long*)(cmdBuf+2));
+		SerialPort.print ("cm  ");
+		SerialPort.print ("right:");
+		SerialPort.print (*(long*)(cmdBuf+2+4));
+		SerialPort.println ("cm");
+	} else { 
+		uint8_t backData[BACK_SIZE] = {0x55, 0xaa, ID, 0x08, CMD_RETURN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0d, 0x0a};
+		for (int i=2; i<10; i++) {
+			backData[i+3] = cmdBuf[i];
+		}
+		fillChecksum (backData);
+
+		Serial.println ("backData:");
+		serialHex (backData, BACK_SIZE);
+		serial2Write (backData, BACK_SIZE);
 	}
-	fillChecksum (backData);
-
-	Serial.println ("backData:");
-	serialHex (backData, BACK_SIZE);
-//////////////////////////////////////////////
-	Serial.print ("left:");
-	Serial.println (*(long*)(cmdBuf+2));
-	Serial.print ("right:");
-	Serial.println (*(long*)(cmdBuf+2+4));
-//////////////////////////////////////////////
-	SerialPort.print ("left:");
-	SerialPort.print (*(long*)(cmdBuf+2));
-	SerialPort.print ("  ");
-	SerialPort.print ("right:");
-	SerialPort.println (*(long*)(cmdBuf+2+4));
-
-	serial2Write (backData, BACK_SIZE);
-
-}
-
-//send data to serial2
-void serial2Write (uint8_t *theBuf, uint8_t leng) {
-	for (int i=0; i<leng; i++) {
-		Serial2.write (theBuf[i]);
-	}
-}
-
-//i2c master send data to slaver
-void iicSend (uint8_t theSlave, uint8_t *theBuf, uint8_t leng) {
-	Wire.beginTransmission(theSlave);
-	for (int i=0; i<leng; i++) {
-		Wire.write(theBuf[i]);
-		delay (1);
-	}
-	Wire.endTransmission();
-}
-
-//
-uint8_t iicRead (uint8_t *theBuf) {
-	int leng = Wire.available ();  
-	if (leng <= 0)
-		return 0;
-	for (int i=0; i<leng; i++) {
-		theBuf[i] = Wire.read ();  
-		//delay (1);
-	}
-	return leng;
-}
-
-
-//print data to PC in hex for test
-void serialHex (uint8_t *thebuf, uint8_t leng) {
-	Serial.print (leng);
-	Serial.print (":");
-	for (int i=0; i<leng; i++) {
-		Serial.print (thebuf[i], HEX);
-		Serial.print (" ");
-	}
-	Serial.println ();
-}
-
-//calc checksum and return it
-uint8_t calcChecksum (uint8_t *theBuf) {
-	int leng = theBuf[3] + 5;
-	uint8_t sum = 0;
-	for (int i=0; i<leng; i++) {
-		sum += theBuf[i];
-	}
-	return sum;
-}
-
-//calc checksum and fill to rigth place
-void fillChecksum (uint8_t *theBuf) {
-	uint8_t sum = calcChecksum (theBuf);
-	uint8_t sumsub = theBuf[3]+ 5;
-	theBuf[sumsub] = sum;
-}
-
-//test checksum, ok return true, or return false 
-boolean checksum (uint8_t *theBuf, uint8_t theMax) {
-	uint8_t sum = calcChecksum (theBuf);
-	uint8_t sumsub = theBuf[3]+ 5;
-	if (sumsub >= theMax)
-		return false;
-	if (sum == theBuf[sumsub])
-		return true;
-	else 
-		return false;
 }
 
 

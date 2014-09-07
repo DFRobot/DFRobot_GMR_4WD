@@ -18,6 +18,8 @@
  *	board: leonardo
  */
  
+#include <Wire.h>
+#include <hcr_4wd.h>
  
 //#define YAXIS A4
 //#define XAXIS A5
@@ -53,13 +55,13 @@ void loop () {
 	x_value = analogRead (XAXIS) ;
 	y_value = analogRead (YAXIS) ;
 
-	x_value = map (x_value, 0, 1023, speedMax, speedMin);
+	x_value = map (x_value, 0, 1023, speedMin, speedMax);
 	y_value = map (y_value, 0, 1023, speedMin, speedMax);
 
-	//	Serial.print (x_value);
-	//	Serial.print ("  ");
-	//	Serial.println (y_value);
-	//	Serial.println ();
+		Serial.print (x_value);
+		Serial.print ("  ");
+		Serial.println (y_value);
+		Serial.println ();
 
 	if (abs (x_value) < 10)
 		x_value = 0;
@@ -117,47 +119,12 @@ void loop () {
 
 		buf[6] = (uint8_t)l_speed;
 		buf[7] = (uint8_t)r_speed;
-		fill_checksum (buf);
-		serial1_write (buf, CMD_SIZE);
-		serial_hex (buf, CMD_SIZE);
+		fillChecksum (buf);
+		serial1Write (buf, CMD_SIZE);
+		serialHex (buf, CMD_SIZE);
 		delay (50);
 	}
 	delay (200);
-}
-
-//calc checksum and return it
-uint8_t calc_checksum (uint8_t *theBuf) {
-	int leng = theBuf[3] + 5;
-	uint8_t sum = 0;
-	for (int i=0; i<leng; i++) {
-		sum += theBuf[i];
-	}
-	return sum;
-}
-
-//calc checksum and fill to rigth place
-void fill_checksum (uint8_t *theBuf) {
-        uint8_t sum = calc_checksum (theBuf);
-	uint8_t sumsub = theBuf[3]+ 5;
-	theBuf[sumsub] = sum;
-}
-
-//send data to serial1
-void serial1_write (uint8_t *buf, uint8_t leng) {
-	for (int i=0; i<leng; i++) {
-		Serial1.write (buf[i]);
-	}
-}
-
-//print data to PC in hex for test 
-void serial_hex (uint8_t *thebuf, uint8_t leng) {
-	Serial.print (leng);
-	Serial.print (":");
-	for (int i=0; i<leng; i++) {
-		Serial.print (thebuf[i], HEX);
-		Serial.print (" ");
-	}
-	Serial.println ();
 }
 
 

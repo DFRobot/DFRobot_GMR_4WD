@@ -21,13 +21,14 @@
 #include <Metro.h>
 #include <Wire.h>
 #include <DFRobot_utility.h>
+#include <hcr_4wd.h>
 
 //Metro DataTrans = Metro(200,true);
 Metro BehaviorInterval = Metro(25,true);
 
 #define LF 0
 #define RT 1
-#define Pbn  11
+#define IIC_BACK_SIZE  11
 #define IIC_READ_SIZE 11
 
 int Lduration,Rduration;
@@ -41,7 +42,8 @@ byte encoder1PinALast;
 int RotationCoder[2];
 int pastCoder[2];
 
-long totalCoder[2];
+//long
+int totalCoder[2];
 
 int _speedtarget[2];
 double _lasterror[2];
@@ -83,8 +85,8 @@ void setup() {
 	Serial.begin(9600);
 	CoderInit();
 
-	_perimeterA = 43.6*1000;
-	_FirmPulsePG = 4250;
+	_perimeterA = 40.8*1000;
+	_FirmPulsePG = 1398;
 
 	_proportion = 3;//4
 	_integral = 0.5;//1
@@ -119,46 +121,74 @@ void loop() {
 		static int lastLspeed = 0;
 		static int lastRspeed = 0;
 		ResentSpeed();
-		int limitMax = 300;
-		int limitMin = -300;
-
+		int limitMax = 250;
+		int limitMin = -250;
+		int speedMax = 100;
+		int speedMin = -100;
 
 		int _Loutput,_Routput;
 		float Lpara,Rpara;
-		Lpara = TVPIDcal(_speedleft,true);
-		Rpara = TVPIDcal(_speedright,false);
+		Lpara = TVPIDcal(_speedleft,LF);
+		Rpara = TVPIDcal(_speedright,RT);
+
 
 		//    Serial.print(Lpara);
 
 		// _Loutput = int(TVAffect(Lpara));
 		// _Routput = int(TVAffect(Rpara));
+		if (Lpara > 0) {
+			_Loutput = constrain (Lpara, 0, limitMax);
+			//_Loutput = map (constrain (Lpara, 0, limitMax), 0, limitMax,  0, speedMax);
+		} else if (Lpara < 0) {
+			_Loutput = constrain (Lpara, limitMin, 0);			
+			//_Loutput = map (constrain (Lpara, limitMin, 0), -limitMin, 0,  speedMin, 0);
+		} else 
+			_Loutput = 0;
 
-		_Loutput = map (constrain (Lpara, limitMin, limitMax), -limitMin, limitMax,  -255, 255);
-		_Routput = map (constrain (Rpara, limitMin, limitMax), -limitMin, limitMax,  -255, 255);
+		if (Rpara > 0) {
+			_Routput = constrain (Rpara, 0, limitMax);			
+			//_Routput = map (constrain (Rpara, 0, limitMax), 0, limitMax,  0, speedMax);
+		} else if (Rpara < 0) {
+			_Routput = constrain (Rpara, limitMin, 0);
+			//			_Routput = map (constrain (Rpara, limitMin, 0), -limitMin, 0,  speedMin, 0);
+		} else 
+			_Routput = 0;
+
+		if (_speedtarget[LF] == 0)
+			_Loutput = 0;
+		if (_speedtarget[RT] == 0)
+			_Routput = 0;
+
+		myCar.control (_Loutput, _Routput);
+		//myCar.control (_speedtarget[LF], _speedtarget[RT]); //with no pid
+
 		//Serial.print (_Loutput);
 		//Serial.print (" ");
 		//Serial.println (_Routput);
-		//myCar.control (_Loutput, _Routput);
-		myCar.control (_speedtarget[LF], _speedtarget[RT]);
 		//    lastLspeed = _Loutput;
 		//    lastRspeed = _Routput;
 
-		//		    Serial.print("LW:");
-		//		    Serial.print(_speedleft);
-		//		    Serial.print(",");
-		//		    Serial.print(_speedtarget[LF]);
-		//		    Serial.print(",");
-		//		    Serial.print(Lpara);
-		//		    Serial.print(",");
-		//		    Serial.print(_Loutput);
-		//    Serial.print("\tRW:");
-		//    Serial.print(_speedright);
-		//    Serial.print(",");
-		//    Serial.print(_speedtarget[RT]);
-		//    Serial.print(",");
-		//    Serial.print(Rpara);
-		//    Serial.print(",");
-		//    Serial.println(_Routput);
+		//		Serial.print("LW:");
+		//		Serial.print(_speedleft);
+		//		Serial.print(",");
+		//		Serial.print(_speedtarget[LF]);
+		//		Serial.print(",");
+		//		Serial.print(Lpara);
+		//		Serial.print(",");
+		//		Serial.print(_Loutput);
+		//Serial.print(",");
+		//Serial.println ((totalCoder[LF]));
+		//
+		//		Serial.print("\tRW:");
+		//		Serial.print(_speedright);
+		//		Serial.print(",");
+		//		Serial.print(_speedtarget[RT]);
+		//		Serial.print(",");
+		//		Serial.print(Rpara);
+		//		Serial.print(",");
+		//		Serial.print(_Routput);
+		//Serial.print(",");
+		//		Serial.println(totalCoder[RT]);
 	}
 }
 
@@ -178,7 +208,7 @@ void CoderInit() {
 }
 
 
-/************************************************* Motor Control ***********************************************/
+/****************************************** Motor Control ****************************************/
 
 /*
    void Motor(int value,byte whichwheel) {
@@ -217,9 +247,11 @@ void ResentSpeed () {
 	pasttime = now - lasttime;
 	lasttime = now;
 
-	_speedleft = lastspeed (Lduration , pasttime);
-	_speedright = lastspeed (Rduration , pasttime);
+	//	_speedleft = lastspeed (Lduration , pasttime);
+	//	_speedright = lastspeed (Rduration , pasttime);
 
+	_speedright = lastspeed (Lduration , pasttime);
+	_speedleft = lastspeed (Rduration , pasttime);
 	//Serial.println(pasttime);
 	// Serial.print("  ");
 	//Serial.println(Lduration);
@@ -234,13 +266,13 @@ void ResentSpeed () {
 /************************************************* PID Control ***********************************************/
 
 //
-float TVPIDcal (float prevspeed,boolean target) {
+float TVPIDcal (float prevspeed,int target) {
 	static int sumerror[2];
 	static int i;
-	if (target)
-		i = 0;
-	else
-		i = 1;
+	if (target == LF)
+		i = LF;
+	else if (target == RT)  
+		i = RT;
 	int derror;
 	int error = _speedtarget[i] - prevspeed;
 
@@ -255,26 +287,6 @@ float TVPIDcal (float prevspeed,boolean target) {
 	return (_proportion*error+_integral*sumerror[i]+_derivative*derror);
 }
 
-/*
-   int TVAffect(float pidpara) {
-   float result = 500;
-   float factor;
-
-   if(pidpara>_maximum)
-   factor = 1;
-   else if (pidpara>0)
-   factor = pidpara/_maximum;
-   else if (pidpara<_minimum)
-   factor = -1;
-   else
-   factor = pidpara/_maximum;
-
-   result *= factor;
-   result += 1500;
-
-   return result;
-   }
- */
 
 /************************** Interrupt *****************************/
 
@@ -303,11 +315,9 @@ void LwheelSpeed() {
 }
 
 //
-void RwheelSpeed()
-{
+void RwheelSpeed() {
 	int Rstate = digitalRead(encoder1pinA);
-	if((encoder1PinALast == LOW)&&Rstate==HIGH)
-	{
+	if((encoder1PinALast == LOW)&&Rstate==HIGH) {
 		int val = digitalRead(encoder1pinB);
 		if(val == LOW && RcoderDir)  
 			RcoderDir = false; //Rreverse
@@ -331,9 +341,11 @@ void RwheelSpeed()
 
 uint8_t iicReadBuf[IIC_READ_SIZE];
 
-//
+
+/********************************** receive data from iic **********************************/
+
 void receiveEvent (int HowMany) {
-	if (iicRead (iicReadBuf) != IIC_READ_SIZE) {	//check length
+	if (iicRead (iicReadBuf, IIC_READ_SIZE) != IIC_READ_SIZE) {	//check length
 		Serial.println ("error! command length error!");
 		return;
 	}
@@ -367,77 +379,29 @@ void receiveEvent (int HowMany) {
 }
 
 //
+/*********************************** return data to iic ***********************************/
 void requestEvent() {  
-	byte RequestString[Pbn] = {
+	byte iicBackBuf[IIC_BACK_SIZE] = {
 		'F','E',0,0,0,0,0,0,0,0,10};
 
-	RequestString[2] = 0x00;
+	iicBackBuf[2] = 0x00;
 
 	if(totalCoder[LF] < 0)  
-		bitWrite (RequestString[2], 4, 1);
+		bitWrite (iicBackBuf[2], 4, 1);
 	if(totalCoder[RT] < 0)  
-		bitWrite (RequestString[2], 0, 1);
+		bitWrite (iicBackBuf[2], 0, 1);
 
 	totalCoder[LF] += pastCoder[LF];
 	totalCoder[RT] += pastCoder[RT];
 
-	* (long*) (RequestString+2) = totalCoder[LF]; 
-	* (long*) (RequestString+2+4) = totalCoder[RT]; 
+	* (long*) (iicBackBuf+2) = totalCoder[LF]; 
+	* (long*) (iicBackBuf+2+4) = totalCoder[RT]; 
 
 	pastCoder[LF] = 0;
 	pastCoder[RT] = 0;
 
-	Wire.write (RequestString,Pbn);
+	iicWrite (iicBackBuf,IIC_BACK_SIZE);
 }
 
-//
-uint8_t  iicRead (uint8_t *theBuf) {
-	int leng = Wire.available ();  
-	if (leng <= 0)
-		return 0;
-	for (int i=0; i<leng; i++) {
-		theBuf[i] = Wire.read ();  
-	}
-	return leng;
-}
-
-//
-void serialHex (uint8_t *thebuf, uint8_t leng) {
-	Serial.print (leng);
-	Serial.print (":");
-	for (int i=0; i<leng; i++) {
-		Serial.print (thebuf[i], HEX);
-		Serial.print (" ");
-	}
-	Serial.println ();
-}
-
-//
-void fillChecksum (uint8_t *theBuf) {
-	int leng = theBuf[3] + 5;
-	theBuf[leng] = getChecksum (theBuf);
-}
-
-//
-uint8_t getChecksum (uint8_t *theBuf) {
-	int leng = theBuf[3] + 5;
-	uint8_t sum = 0;
-	for (int i=0; i<leng; i++) {
-		sum += theBuf[i];
-	}
-	return sum;
-}
-
-//
-boolean checksum (uint8_t *theBuf, uint8_t theMax) {
-	uint8_t sum = getChecksum (theBuf);
-	uint8_t sumsub = theBuf[3]+ 5;
-	if (sumsub >= theMax)
-		return false;
-	if (sum == theBuf[sumsub])
-		return true;
-	else 
-		return false;
-}
 
 

@@ -46,8 +46,7 @@ int pastCoder[2];
 int totalCoder[2];
 
 int _speedtarget[2];
-double _lasterror[2];
-double _preverror[2];
+
 
 float _proportion;
 float _integral;
@@ -137,28 +136,30 @@ void loop() {
 		// _Loutput = int(TVAffect(Lpara));
 		// _Routput = int(TVAffect(Rpara));
 		if (Lpara > 0) {
-			_Loutput = constrain (Lpara, 0, limitMax);
-			//_Loutput = map (constrain (Lpara, 0, limitMax), 0, limitMax,  0, speedMax);
+			//_Loutput = constrain (Lpara, 0, limitMax);
+			_Loutput = map (constrain (Lpara, 0, 400), 0, 400,  0, 250);
 		} else if (Lpara < 0) {
-			_Loutput = constrain (Lpara, limitMin, 0);			
-			//_Loutput = map (constrain (Lpara, limitMin, 0), -limitMin, 0,  speedMin, 0);
+			//_Loutput = constrain (Lpara, limitMin, 0);			
+			_Loutput = map (constrain (Lpara, -400, 0), -400, 0,  -250, 0);
 		} else 
 			_Loutput = 0;
 
 		if (Rpara > 0) {
-			_Routput = constrain (Rpara, 0, limitMax);			
-			//_Routput = map (constrain (Rpara, 0, limitMax), 0, limitMax,  0, speedMax);
+			//_Routput = constrain (Rpara, 0, limitMax);			
+			_Routput = map (constrain (Rpara, 0, 400), 0, 400,  0, 250);
 		} else if (Rpara < 0) {
-			_Routput = constrain (Rpara, limitMin, 0);
-			//			_Routput = map (constrain (Rpara, limitMin, 0), -limitMin, 0,  speedMin, 0);
-		} else 
+			//_Routput = constrain (Rpara, limitMin, 0);
+			_Routput = map (constrain (Rpara, -400, 0), -400, 0,  -250, 0);
+		} else
 			_Routput = 0;
 
-		if (_speedtarget[LF] == 0)
-			_Loutput = 0;
-		if (_speedtarget[RT] == 0)
-			_Routput = 0;
+//		if (_speedtarget[LF] == 0)
+//			_Loutput = 0;
+//		if (_speedtarget[RT] == 0)
+//			_Routput = 0;
 
+//if (abs (_Loutput) < 40) _Loutput = 0;
+//if (abs (_Routput) < 40) _Routput = 0;
 		myCar.control (_Loutput, _Routput);
 		//myCar.control (_speedtarget[LF], _speedtarget[RT]); //with no pid
 
@@ -168,27 +169,27 @@ void loop() {
 		//    lastLspeed = _Loutput;
 		//    lastRspeed = _Routput;
 
-		//		Serial.print("LW:");
-		//		Serial.print(_speedleft);
-		//		Serial.print(",");
-		//		Serial.print(_speedtarget[LF]);
-		//		Serial.print(",");
-		//		Serial.print(Lpara);
-		//		Serial.print(",");
-		//		Serial.print(_Loutput);
+				Serial.print("LW:");
+				Serial.print(_speedleft);
+				Serial.print(",");
+				Serial.print(_speedtarget[LF]);
+				Serial.print(",");
+				Serial.print(Lpara);
+				Serial.print(",");
+				Serial.print(_Loutput);
 		//Serial.print(",");
-		//Serial.println ((totalCoder[LF]));
-		//
-		//		Serial.print("\tRW:");
-		//		Serial.print(_speedright);
-		//		Serial.print(",");
-		//		Serial.print(_speedtarget[RT]);
-		//		Serial.print(",");
-		//		Serial.print(Rpara);
-		//		Serial.print(",");
-		//		Serial.print(_Routput);
+
+		
+				Serial.print("\tRW:");
+				Serial.print(_speedright);
+				Serial.print(",");
+				Serial.print(_speedtarget[RT]);
+				Serial.print(",");
+				Serial.print(Rpara);
+				Serial.print(",");
+				Serial.println(_Routput);
 		//Serial.print(",");
-		//		Serial.println(totalCoder[RT]);
+				//Serial.println(totalCoder[RT]);
 	}
 }
 
@@ -207,28 +208,7 @@ void CoderInit() {
 	attachInterrupt (RT, RwheelSpeed, CHANGE);
 }
 
-
-/****************************************** Motor Control ****************************************/
-
-/*
-   void Motor(int value,byte whichwheel) {
-   value = constrain(value,1000,2000);
-//
-// MotorLeft.write(90);
-//MotorRight.write(90);
-///
-if(whichwheel == LF){
-MotorLeft.writeMicroseconds(value);
-//    MotorLeft.write(100);
-}
-else if(whichwheel == RT){
-MotorRight.writeMicroseconds(value);
-//    MotorRight.write(100);
-}
-}
- */
-
-/************************************************ calculate speed (cm/s) ***********************************************/
+/******************************* calculate speed (cm/s) *********************************/
 
 float lastspeed (int longs,int diff) {
 	double internum = _perimeterA;
@@ -250,8 +230,8 @@ void ResentSpeed () {
 	//	_speedleft = lastspeed (Lduration , pasttime);
 	//	_speedright = lastspeed (Rduration , pasttime);
 
-	_speedright = lastspeed (Lduration , pasttime);
-	_speedleft = lastspeed (Rduration , pasttime);
+	 _speedleft= lastspeed (Lduration , pasttime);
+	 _speedright = lastspeed (Rduration , pasttime);
 	//Serial.println(pasttime);
 	// Serial.print("  ");
 	//Serial.println(Lduration);
@@ -263,10 +243,12 @@ void ResentSpeed () {
 	Rduration = 0;
 }
 
-/************************************************* PID Control ***********************************************/
+/*********************************** PID Control *******************************/
 
 //
 float TVPIDcal (float prevspeed,int target) {
+ static  double _lasterror[2];
+static double _preverror[2];
 	static int sumerror[2];
 	static int i;
 	if (target == LF)
@@ -277,13 +259,16 @@ float TVPIDcal (float prevspeed,int target) {
 	int error = _speedtarget[i] - prevspeed;
 
 	sumerror[i] += error;
+if (error == 0) 
+sumerror[i] /= 2;
 	sumerror[i] = min(_maximum,sumerror[i]);//limit the range of intergral segment
 	sumerror[i] = max(_minimum,sumerror[i]);
 
 	derror = _lasterror[i] - _preverror[i];
 	_preverror[i] = _lasterror[i];
 	_lasterror[i] = error;
-
+Serial.print ("d=");
+Serial.println (sumerror[i]);
 	return (_proportion*error+_integral*sumerror[i]+_derivative*derror);
 }
 
@@ -304,9 +289,9 @@ void LwheelSpeed() {
 	encoder0PinALast = Lstate;
 
 	if(!LcoderDir)  
-		Lduration++;
-	else  
 		Lduration--;
+	else  
+		Lduration++;
 
 	if(true)  
 		RotationCoder[LF] ++;
@@ -327,9 +312,9 @@ void RwheelSpeed() {
 	encoder1PinALast = Rstate;
 
 	if(!RcoderDir)  
-		Rduration++;
-	else  
 		Rduration--;
+	else  
+		Rduration++;
 
 	if(true)  
 		RotationCoder[RT] ++;
@@ -358,17 +343,17 @@ void receiveEvent (int HowMany) {
 		return;
 	}
 
-	serialHex (iicReadBuf, IIC_READ_SIZE);
+	//serialHex (iicReadBuf, IIC_READ_SIZE);
 
 	switch (iicReadBuf[4]) {	//get command
 		case 0x03:
 			// controlDelayTime = millis ();
-			if (iicReadBuf[5] & 0x01)
+			if (iicReadBuf[5] & 0x10)
 				_speedtarget[LF] = -iicReadBuf[6]; 
 			else 
 				_speedtarget[LF] = iicReadBuf[6]; 
 
-			if (iicReadBuf[5] & 0x10)
+			if (iicReadBuf[5] & 0x01)
 				_speedtarget[RT] = -iicReadBuf[7]; 
 			else 
 				_speedtarget[RT] = iicReadBuf[7]; 
@@ -394,14 +379,15 @@ void requestEvent() {
 	totalCoder[LF] += pastCoder[LF];
 	totalCoder[RT] += pastCoder[RT];
 
-	* (long*) (iicBackBuf+2) = totalCoder[LF]; 
-	* (long*) (iicBackBuf+2+4) = totalCoder[RT]; 
+	* (long*) (iicBackBuf+2) = (long) (totalCoder[LF]*0.408/_FirmPulsePG); 
+	* (long*) (iicBackBuf+2+4) = (long) (totalCoder[RT]*0.408/_FirmPulsePG); 
 
 	pastCoder[LF] = 0;
 	pastCoder[RT] = 0;
 
 	iicWrite (iicBackBuf,IIC_BACK_SIZE);
 }
+
 
 
 

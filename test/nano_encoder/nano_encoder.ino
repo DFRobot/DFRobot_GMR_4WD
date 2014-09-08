@@ -39,8 +39,8 @@ void setup() {
 	pinMode(PIN_LEFT_D,INPUT_PULLUP);
 	pinMode(PIN_RIGHT_D,INPUT_PULLUP);
 
-	attachInterrupt(0, funcRight, CHANGE); 
-	attachInterrupt(1, funcLeft, CHANGE);
+	attachInterrupt(0,funcLeft , CHANGE); 
+	attachInterrupt(1,funcRight, CHANGE);
 }
 
 //
@@ -59,10 +59,10 @@ void loop() {
 void funcRight () {
 	int dataA = digitalRead (PIN_RIGHT_I);
 	int dataAd = digitalRead (PIN_RIGHT_D);
-	if	( dataA &&  dataAd)	countRight--;
-	else if ( dataA && ~dataAd)	countRight++;
-	else if (~dataA &&  dataAd)	countRight++;
-	else if (~dataA && ~dataAd)	countRight--;
+	if	( dataA &&  dataAd)	countRight++;
+	else if ( dataA && ~dataAd)	countRight--;
+	else if (~dataA &&  dataAd)	countRight--;
+	else if (~dataA && ~dataAd)	countRight++;
 }
 
 
@@ -70,10 +70,10 @@ void funcRight () {
 void funcLeft () {
 	int dataB = digitalRead (PIN_LEFT_I);
 	int dataBd = digitalRead (PIN_LEFT_D);
-	if	( dataB &&  dataBd)	countLeft--;
-	else if ( dataB && ~dataBd)	countLeft++;
-	else if (~dataB &&  dataBd)	countLeft++;
-	else if (~dataB && ~dataBd)	countLeft--;
+	if	( dataB &&  dataBd)	countLeft++;
+	else if ( dataB && ~dataBd)	countLeft--;
+	else if (~dataB &&  dataBd)	countLeft--;
+	else if (~dataB && ~dataBd)	countLeft++;
 }
 
 

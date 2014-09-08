@@ -19,12 +19,13 @@
  */
  
 #include <Wire.h>
+#include <DFRobot_utility.h>
 #include <hcr_4wd.h>
  
 //#define YAXIS A4
 //#define XAXIS A5
 
-#define YAXIS A2
+#define YAXIS A4
 #define XAXIS A3
 
 #define CMD_SIZE 11
@@ -38,8 +39,8 @@ int16_t r_speed = 0;
 
 uint8_t stop_sum = 0;
 
-int speedMax = 255;
-int speedMin = -255;
+int speedMax = 100;
+int speedMin = -100;
 
 //
 void setup () {
@@ -47,7 +48,7 @@ void setup () {
 	Serial.begin (9600);
 	pinMode (XAXIS, INPUT);
 	pinMode (YAXIS, INPUT);
-	delay (2000);
+	delay (1000);
 }
 
 //
@@ -55,7 +56,7 @@ void loop () {
 	x_value = analogRead (XAXIS) ;
 	y_value = analogRead (YAXIS) ;
 
-	x_value = map (x_value, 0, 1023, speedMin, speedMax);
+	x_value = map (x_value, 0, 1023, speedMax, speedMin);
 	y_value = map (y_value, 0, 1023, speedMin, speedMax);
 
 		Serial.print (x_value);
@@ -63,36 +64,47 @@ void loop () {
 		Serial.println (y_value);
 		Serial.println ();
 
-	if (abs (x_value) < 10)
+	if (abs (x_value) < 7)
 		x_value = 0;
-	if (abs (y_value) < 10)
+	if (abs (y_value) < 7)
 		y_value = 0;
 
-	l_speed = r_speed = y_value;
+      if (y_value == 0) {
+          l_speed = x_value;
+          r_speed = -x_value;  
+           Serial.print ("speed:");
+          Serial.print (l_speed);
+           Serial.print ("  ");
+            Serial.println (r_speed);
 
-	if (x_value < 0) {
-		if (l_speed > 0)
-			l_speed -= -x_value;
-		else if (l_speed < 0)
-			l_speed += -x_value;
-		else {
-			l_speed  = x_value;
-			r_speed  = -x_value;
-		}
-	}
-	else if (x_value > 0) {
-		if (r_speed > 0)
-			r_speed -= x_value;
-		else if (r_speed < 0)        
-			r_speed += x_value;
-		else {
-			l_speed  = x_value;
-			r_speed  = -x_value;
-		}
-	}
+      } else if (y_value > 0) {
+         l_speed = r_speed = y_value;
+        if (x_value < 0) {
+          x_value = -x_value;
+          //x_value = constrain (x_value, 0, y_value);
+          x_value = map (x_value, 0, speedMax, 0, y_value); 
+          l_speed -= x_value;
+        } else if (x_value > 0) {
+          //x_value = constrain (x_value, 0, y_value);
+          x_value = map (x_value, 0, speedMax, 0, y_value);
+          r_speed -= x_value;
+        }      
+      } else if (y_value < 0) {
+          l_speed = r_speed = y_value;
+        if (x_value < 0) {
+          x_value = -x_value;
+          //x_value = constrain (x_value, 0, -y_value);
+          x_value = map (x_value, 0, speedMax, 0, -y_value);
+          l_speed += x_value;
+        } else if (x_value > 0) {
+          //x_value = constrain (x_value, 0, -y_value);
+          x_value = map (x_value, 0, speedMax, 0, -y_value);
+          r_speed += x_value;
+        } 
+      }
 
-	if (abs (l_speed) < 40) l_speed = 0;
-	if (abs (r_speed) < 40) r_speed = 0;
+	//if (abs (l_speed) < 5) l_speed = 0;
+	//if (abs (r_speed) < 5) r_speed = 0;
 
 	if (l_speed == 0 && r_speed == 0) {
 		stop_sum ++;
@@ -116,7 +128,7 @@ void loop () {
 		} else {
 			bitWrite (buf[5], 0, 0);
 		}
-
+                 
 		buf[6] = (uint8_t)l_speed;
 		buf[7] = (uint8_t)r_speed;
 		fillChecksum (buf);

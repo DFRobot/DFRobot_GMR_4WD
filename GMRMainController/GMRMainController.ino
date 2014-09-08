@@ -105,17 +105,17 @@ void receiveEvent (boolean isString) {
 	if (isString) {
 		// Serial.print ("left:");
 		// Serial.print (*(long*)(cmdBuf+2));
-		// Serial.print ("cm  ");
+		// Serial.print ("m  ");
 		// Serial.print ("right:");
 		// Serial.print (*(long*)(cmdBuf+2+4));
-		// Serial.println ("cm");
+		// Serial.println ("m");
 
 		SerialPort.print ("left:");
 		SerialPort.print (*(long*)(cmdBuf+2));
-		SerialPort.print ("cm  ");
+		SerialPort.print ("m  ");
 		SerialPort.print ("right:");
 		SerialPort.print (*(long*)(cmdBuf+2+4));
-		SerialPort.println ("cm");
+		SerialPort.println ("m");
 	} else { 
 		uint8_t backData[BACK_SIZE] = {0x55, 0xaa, ID, 0x08, CMD_RETURN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0d, 0x0a};
 		for (int i=2; i<10; i++) {

@@ -14,11 +14,12 @@
  *************************************************************************/
 
 /*
+ *	Copyright (C) 2014 DFRobot
  *	author:	lisper <lisper.li@dfrobot.com> 
  *	board: mega2560
  */
 
-#include <Metro.h>
+
 #include <Wire.h>
 
 #include <DFRobot_utility.h>
@@ -31,24 +32,28 @@
 
 #define SerialPort Serial2
 
-#define IIC_SLAVE 10
+#define IIC_SLAVE		10
 
+#define ID			0x10
 
-#define ID 0x10
+#define IIC_SEND_SIZE		11
+#define IIC_BACK_SIZE		11 
+#define BACK_SIZE		16
+#define SERIAL_MAX_SIZE		25
+#define SERIAL_SIZE		11
 
-#define IIC_SEND_SIZE  11
-#define IIC_BACK_SIZE  11
-#define BACK_SIZE 16
-#define SERIAL_MAX_SIZE 25
-#define SERIAL_SIZE 11
 
 uint8_t cmdBuffer[SERIAL_MAX_SIZE];
 
+//#define _debug
 
 //
 void setup() {
 	Wire.begin(); // join i2c bus (address optional for master)
+	/////////////////////////////////////
+#ifdef _debug
 	Serial.begin(9600);
+#endif
 	SerialPort.begin(9600);
 }
 
@@ -60,15 +65,43 @@ void loop() {
 //read command from serial
 void CommReader () {
 	int cmdLength = read_serial_with_timeout (SerialPort, cmdBuffer, SERIAL_SIZE, 4);
-	if (cmdLength == SERIAL_SIZE) {
-		if (!checksum (cmdBuffer, SERIAL_MAX_SIZE)) {
-			Serial.println ("checksum error!");
-			return ;  
-		}
-		Serial.print ("read serial ");
-		serialHex (cmdBuffer, cmdLength);
-		parseCmd (cmdBuffer, cmdLength);
+	if (cmdLength <= 0)
+		return ;
+	if (cmdBuffer[0] != 0x55 || cmdBuffer[1] != 0xaa) {
+		/////////////////////////////////////
+#ifdef _debug
+		Serial.println ("header error!");
+#endif
+		return ;  
 	}
+	if (cmdBuffer[2] != ID) {
+		/////////////////////////////////////
+#ifdef _debug
+		Serial.println ("ID error!");
+#endif
+		return ;  
+	}
+	if (cmdLength != SERIAL_SIZE) {
+		/////////////////////////////////////
+#ifdef _debug
+		Serial.println ("length error!");
+#endif
+		SerialPort.println ("length error!");
+		return ;  
+	}
+	if (!checksum (cmdBuffer, SERIAL_MAX_SIZE)) {
+		/////////////////////////////////////
+#ifdef _debug
+		Serial.println ("checksum error!");
+#endif
+		SerialPort.println ("checksum error!");
+		return ; 
+	}
+#ifdef _debug
+	Serial.print ("read serial ");	//for debug
+	serialHex (cmdBuffer, cmdLength);
+#endif
+	parseCmd (cmdBuffer, cmdLength);
 }
 
 //parse command that read from serial
@@ -97,25 +130,38 @@ void receiveEvent (boolean isString) {
 	uint8_t cmdBuf[IIC_BACK_SIZE];
 	int length = iicRead (IIC_SLAVE, cmdBuf, IIC_BACK_SIZE);
 	if (length != IIC_BACK_SIZE) {
+		/////////////////////////////////////
+#ifdef _debug
 		Serial.println ("error! receive length error!");
+#endif
+
 		return;
 	}
+
+	/////////////////////////////////////
+#ifdef _debug
 	Serial.print ("receive ");
 	serialHex (cmdBuf, IIC_BACK_SIZE);
+#endif
+
 	if (isString) {
-		// Serial.print ("left:");
-		// Serial.print (*(long*)(cmdBuf+2));
-		// Serial.print ("m  ");
-		// Serial.print ("right:");
-		// Serial.print (*(long*)(cmdBuf+2+4));
-		// Serial.println ("m");
+
+		/////////////////////////////////////
+#ifdef _debug
+		Serial.print ("left:");
+		Serial.print (*(long*)(cmdBuf+2));
+		Serial.print ("cm  ");
+		Serial.print ("right:");
+		Serial.print (*(long*)(cmdBuf+2+4));
+		Serial.println ("cm");
+#endif
 
 		SerialPort.print ("left:");
 		SerialPort.print (*(long*)(cmdBuf+2));
-		SerialPort.print ("m  ");
+		SerialPort.print ("cm  ");
 		SerialPort.print ("right:");
 		SerialPort.print (*(long*)(cmdBuf+2+4));
-		SerialPort.println ("m");
+		SerialPort.println ("cm");
 	} else { 
 		uint8_t backData[BACK_SIZE] = {0x55, 0xaa, ID, 0x08, CMD_RETURN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0d, 0x0a};
 		for (int i=2; i<10; i++) {
@@ -123,8 +169,12 @@ void receiveEvent (boolean isString) {
 		}
 		fillChecksum (backData);
 
+		/////////////////////////////////////
+#ifdef _debug
 		Serial.println ("backData:");
 		serialHex (backData, BACK_SIZE);
+#endif
+
 		serial2Write (backData, BACK_SIZE);
 	}
 }

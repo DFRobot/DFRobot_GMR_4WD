@@ -14,21 +14,24 @@
  *************************************************************************/
 
 /*
+ *	Copyright (C) 2014 DFRobot
  *	author:	lisper <lisper.li@dfrobot.com> 
  *	board: nano
  */
-#include <Servo.h>
+
 #include <Metro.h>
 #include <Wire.h>
 #include <DFRobot_utility.h>
 #include <hcr_4wd.h>
+
+//#define _debug
 
 //Metro DataTrans = Metro(200,true);
 Metro BehaviorInterval = Metro(25,true);
 
 #define LF 0
 #define RT 1
-#define IIC_BACK_SIZE  11
+#define IIC_BACK_SIZE 11
 #define IIC_READ_SIZE 11
 
 int Lduration,Rduration;
@@ -40,7 +43,7 @@ const byte encoder1pinA = 3;
 const byte encoder1pinB = 5;
 byte encoder1PinALast;
 int RotationCoder[2];
-int pastCoder[2];
+long pastCoder[2];
 
 //long
 int totalCoder[2];
@@ -54,8 +57,7 @@ float _derivative;
 float _maximum;
 float _minimum;
 
-Servo MotorLeft;
-Servo MotorRight;
+
 float _speedleft;
 float _speedright;
 float _perimeterA;
@@ -80,8 +82,9 @@ void setup() {
 
 
 	//  while(true);  
-
+#ifdef _debug
 	Serial.begin(9600);
+#endif
 	CoderInit();
 
 	_perimeterA = 40.8*1000;
@@ -100,6 +103,7 @@ void setup() {
 
 //
 void loop() {
+
 	//if(DataTrans.check()) {    
 	//    Serial.print(_speedtarget[LF]);
 	//    Serial.print(",");
@@ -153,13 +157,13 @@ void loop() {
 		} else
 			_Routput = 0;
 
-//		if (_speedtarget[LF] == 0)
-//			_Loutput = 0;
-//		if (_speedtarget[RT] == 0)
-//			_Routput = 0;
+		//		if (_speedtarget[LF] == 0)
+		//			_Loutput = 0;
+		//		if (_speedtarget[RT] == 0)
+		//			_Routput = 0;
 
-//if (abs (_Loutput) < 40) _Loutput = 0;
-//if (abs (_Routput) < 40) _Routput = 0;
+		//if (abs (_Loutput) < 40) _Loutput = 0;
+		//if (abs (_Routput) < 40) _Routput = 0;
 		myCar.control (_Loutput, _Routput);
 		//myCar.control (_speedtarget[LF], _speedtarget[RT]); //with no pid
 
@@ -169,27 +173,31 @@ void loop() {
 		//    lastLspeed = _Loutput;
 		//    lastRspeed = _Routput;
 
-				Serial.print("LW:");
-				Serial.print(_speedleft);
-				Serial.print(",");
-				Serial.print(_speedtarget[LF]);
-				Serial.print(",");
-				Serial.print(Lpara);
-				Serial.print(",");
-				Serial.print(_Loutput);
+#ifdef _debug
+		Serial.print("LW:");
+		Serial.print(_speedleft);
+		Serial.print(",");
+		Serial.print(_speedtarget[LF]);
+		Serial.print(",");
+		Serial.print(Lpara);
+		Serial.print(",");
+		Serial.print(_Loutput);
 		//Serial.print(",");
 
-		
-				Serial.print("\tRW:");
-				Serial.print(_speedright);
-				Serial.print(",");
-				Serial.print(_speedtarget[RT]);
-				Serial.print(",");
-				Serial.print(Rpara);
-				Serial.print(",");
-				Serial.println(_Routput);
+
+		Serial.print("\tRW:");
+		Serial.print(_speedright);
+		Serial.print(",");
+		Serial.print(_speedtarget[RT]);
+		Serial.print(",");
+		Serial.print(Rpara);
+		Serial.print(",");
+		Serial.print(_Routput);
+Serial.print(",");
+Serial.println((long) (pastCoder[RT]*(40.82/_FirmPulsePG)));
+#endif
 		//Serial.print(",");
-				//Serial.println(totalCoder[RT]);
+		//Serial.println(totalCoder[RT]);
 	}
 }
 
@@ -230,8 +238,8 @@ void ResentSpeed () {
 	//	_speedleft = lastspeed (Lduration , pasttime);
 	//	_speedright = lastspeed (Rduration , pasttime);
 
-	 _speedleft= lastspeed (Lduration , pasttime);
-	 _speedright = lastspeed (Rduration , pasttime);
+	_speedleft= lastspeed (Lduration , pasttime);
+	_speedright = lastspeed (Rduration , pasttime);
 	//Serial.println(pasttime);
 	// Serial.print("  ");
 	//Serial.println(Lduration);
@@ -247,8 +255,8 @@ void ResentSpeed () {
 
 //
 float TVPIDcal (float prevspeed,int target) {
- static  double _lasterror[2];
-static double _preverror[2];
+	static  double _lasterror[2];
+	static double _preverror[2];
 	static int sumerror[2];
 	static int i;
 	if (target == LF)
@@ -259,16 +267,14 @@ static double _preverror[2];
 	int error = _speedtarget[i] - prevspeed;
 
 	sumerror[i] += error;
-if (error == 0) 
-sumerror[i] /= 2;
+	if (error == 0) 
+		sumerror[i] /= 2;
 	sumerror[i] = min(_maximum,sumerror[i]);//limit the range of intergral segment
 	sumerror[i] = max(_minimum,sumerror[i]);
 
 	derror = _lasterror[i] - _preverror[i];
 	_preverror[i] = _lasterror[i];
 	_lasterror[i] = error;
-Serial.print ("d=");
-Serial.println (sumerror[i]);
 	return (_proportion*error+_integral*sumerror[i]+_derivative*derror);
 }
 
@@ -331,15 +337,21 @@ uint8_t iicReadBuf[IIC_READ_SIZE];
 
 void receiveEvent (int HowMany) {
 	if (iicRead (iicReadBuf, IIC_READ_SIZE) != IIC_READ_SIZE) {	//check length
+#ifdef _debug
 		Serial.println ("error! command length error!");
+#endif
 		return;
 	}
 	if (iicReadBuf[0] != 0x55 || iicReadBuf[1] != 0xaa) {	//check header
+#ifdef _debug
 		Serial.println ("error! command header error!");
+#endif
 		return;
 	}
 	if (!checksum (iicReadBuf, IIC_READ_SIZE)) {	//test checksum
+#ifdef _debug
 		Serial.println ("error! checksum error!");
+#endif
 		return;
 	}
 
@@ -358,8 +370,11 @@ void receiveEvent (int HowMany) {
 			else 
 				_speedtarget[RT] = iicReadBuf[7]; 
 			break;
-			//default:
-			//Serial.println ("error! no this command!");
+		
+#ifdef _debug
+default:
+			Serial.println ("error! no this command!");
+#endif
 	}
 }
 
@@ -371,23 +386,15 @@ void requestEvent() {
 
 	iicBackBuf[2] = 0x00;
 
-	if(totalCoder[LF] < 0)  
+	if(pastCoder[LF] < 0)  
 		bitWrite (iicBackBuf[2], 4, 1);
-	if(totalCoder[RT] < 0)  
+	if(pastCoder[RT] < 0)  
 		bitWrite (iicBackBuf[2], 0, 1);
 
-	totalCoder[LF] += pastCoder[LF];
-	totalCoder[RT] += pastCoder[RT];
-
-	* (long*) (iicBackBuf+2) = (long) (totalCoder[LF]*0.408/_FirmPulsePG); 
-	* (long*) (iicBackBuf+2+4) = (long) (totalCoder[RT]*0.408/_FirmPulsePG); 
-
-	pastCoder[LF] = 0;
-	pastCoder[RT] = 0;
+	* (long*) (iicBackBuf+2) = (long) (pastCoder[LF]*(40.82/_FirmPulsePG)); 	//cm
+	* (long*) (iicBackBuf+2+4) = (long) (pastCoder[RT]*(40.82/_FirmPulsePG));
 
 	iicWrite (iicBackBuf,IIC_BACK_SIZE);
 }
-
-
 
 

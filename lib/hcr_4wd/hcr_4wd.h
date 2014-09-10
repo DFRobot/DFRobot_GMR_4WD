@@ -14,42 +14,19 @@
  *************************************************************************/
 
 /*
+ *	Copyright (C) 2014 DFRobot
  *	author:	lisper <lisper.li@dfrobot.com> 
- *	board: nano
+ *	hcr protocol checksum process library
  */
 
-#include <DFRobot_utility.h>
-
-DFRobotCar mycar(8, 9, 11, 10);
-
-void setup () {
-	mycar.changeDir (true, false);
-	pinMode (13, OUTPUT);
-}
+#include <Arduino.h>
 
 
-void loop () {
-	mycar.control (100, 0);
-	digitalWrite (13, HIGH);
-	delay (1000);
+//fill checksum to hcr protocol string
+void fillChecksum (uint8_t *theBuf);
 
-	mycar.control (100, 100);
-	digitalWrite (13, LOW);
-	delay (1000);
+//calc checksum in hcr protocol string
+uint8_t calcChecksum (uint8_t *theBuf); 
 
-	mycar.control (0, 0);
-	delay (2000);
-}
-
-
-/*
- *	
- *	DFRobotCar (uint8_t left_en, uint8_t left_pwm, uint8_t right_en, uint8_t right_pwm);
- *	
- *	//switch left and right side direction
- *	void switchDir (bool left, bool right);
- *	
- *	//specify left and right side's speed, round is (-255 ~ 255)        
- *	void control (int16_t left, int16_t right); 
- *	
- */
+//test checksum in hcr protocol string
+boolean checksum (uint8_t *theBuf, uint8_t theMax); 

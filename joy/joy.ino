@@ -14,6 +14,7 @@
  *************************************************************************/
 
 /*
+ *	Copyright (C) 2014 DFRobot
  *	author:	lisper <lisper.li@dfrobot.com> 
  *	board: leonardo
  */
@@ -81,11 +82,9 @@ void loop () {
          l_speed = r_speed = y_value;
         if (x_value < 0) {
           x_value = -x_value;
-          //x_value = constrain (x_value, 0, y_value);
           x_value = map (x_value, 0, speedMax, 0, y_value); 
           l_speed -= x_value;
         } else if (x_value > 0) {
-          //x_value = constrain (x_value, 0, y_value);
           x_value = map (x_value, 0, speedMax, 0, y_value);
           r_speed -= x_value;
         }      
@@ -93,18 +92,13 @@ void loop () {
           l_speed = r_speed = y_value;
         if (x_value < 0) {
           x_value = -x_value;
-          //x_value = constrain (x_value, 0, -y_value);
           x_value = map (x_value, 0, speedMax, 0, -y_value);
           l_speed += x_value;
         } else if (x_value > 0) {
-          //x_value = constrain (x_value, 0, -y_value);
           x_value = map (x_value, 0, speedMax, 0, -y_value);
           r_speed += x_value;
         } 
       }
-
-	//if (abs (l_speed) < 5) l_speed = 0;
-	//if (abs (r_speed) < 5) r_speed = 0;
 
 	if (l_speed == 0 && r_speed == 0) {
 		stop_sum ++;
@@ -113,7 +107,7 @@ void loop () {
 		stop_sum = 0;
 	}
 
-	if (stop_sum < 3) {
+	if (stop_sum < 5) {
 		uint8_t buf[CMD_SIZE] = {0x55, 0xaa, ID, 0x03, 0x03, 0, 0, 0, 0, 0x0d, 0x0a};
 		if (l_speed < 0) {
 			l_speed = -l_speed;                  

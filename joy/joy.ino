@@ -29,6 +29,9 @@
 #define YAXIS A4
 #define XAXIS A3
 
+#define BUTTON1 9 
+#define BUTTON2 11
+
 #define CMD_SIZE 11
 #define ID	0x10
 int16_t x_value = 0;
@@ -49,11 +52,29 @@ void setup () {
 	Serial.begin (9600);
 	pinMode (XAXIS, INPUT);
 	pinMode (YAXIS, INPUT);
-	delay (1000);
+        pinMode (BUTTON1, INPUT);
+        pinMode (BUTTON2, INPUT);	
+        delay (1000);
 }
 
 //
 void loop () {
+        if (digitalRead (BUTTON1) == 0) {
+        uint8_t buf[CMD_SIZE] = {0x55, 0xaa, ID, 0x03, 0x055, 0, 0, 0, 0, 0x0d, 0x0a};
+        fillChecksum (buf);
+	serial1Write (buf, CMD_SIZE);
+	serialHex (buf, CMD_SIZE);
+	delay (100);
+        return;
+        } else if (digitalRead (BUTTON2) == 0) {
+        uint8_t buf[CMD_SIZE] = {0x55, 0xaa, ID, 0x03, 0x056, 0, 0, 0, 0, 0x0d, 0x0a};
+        fillChecksum (buf);
+	serial1Write (buf, CMD_SIZE);
+	serialHex (buf, CMD_SIZE);
+	delay (100);
+        return;
+        }
+        
 	x_value = analogRead (XAXIS) ;
 	y_value = analogRead (YAXIS) ;
 

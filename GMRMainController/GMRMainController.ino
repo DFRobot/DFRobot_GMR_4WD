@@ -20,9 +20,8 @@
  */
 
 
-#include <Wire.h>
-
 #include <DFRobot_utility.h>
+#include <utility/iic.h>
 #include <hcr_4wd.h>
 
 #define CMD_CTRL_MOTOR		0x03
@@ -45,7 +44,7 @@
 
 uint8_t cmdBuffer[SERIAL_MAX_SIZE];
 
-//#define _debug
+#define _debug
 
 //
 void setup() {
@@ -64,7 +63,7 @@ void loop() {
 
 //read command from serial
 void CommReader () {
-	int cmdLength = read_serial_with_timeout (SerialPort, cmdBuffer, SERIAL_SIZE, 4);
+	int cmdLength = serialRead (SerialPort, cmdBuffer, SERIAL_SIZE, 4);
 	if (cmdLength <= 0)
 		return ;
 	if (cmdBuffer[0] != 0x55 || cmdBuffer[1] != 0xaa) {
@@ -99,7 +98,7 @@ void CommReader () {
 	}
 #ifdef _debug
 	Serial.print ("read serial ");	//for debug
-	serialHex (cmdBuffer, cmdLength);
+	printHex (cmdBuffer, cmdLength);
 #endif
 	parseCmd (cmdBuffer, cmdLength);
 }
@@ -141,7 +140,7 @@ void receiveEvent (boolean isString) {
 	/////////////////////////////////////
 #ifdef _debug
 	Serial.print ("receive ");
-	serialHex (cmdBuf, IIC_BACK_SIZE);
+	printHex (cmdBuf, IIC_BACK_SIZE);
 #endif
 
 	if (isString) {
@@ -172,7 +171,7 @@ void receiveEvent (boolean isString) {
 		/////////////////////////////////////
 #ifdef _debug
 		Serial.println ("backData:");
-		serialHex (backData, BACK_SIZE);
+		printHex (backData, BACK_SIZE);
 #endif
 
 		serial2Write (backData, BACK_SIZE);

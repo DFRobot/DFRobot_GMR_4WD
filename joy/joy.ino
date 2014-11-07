@@ -19,8 +19,8 @@
  *	board: leonardo
  */
  
-#include <Wire.h>
 #include <DFRobot_utility.h>
+#include <utility/iic.h>
 #include <hcr_4wd.h>
  
 //#define YAXIS A4
@@ -63,14 +63,14 @@ void loop () {
         uint8_t buf[CMD_SIZE] = {0x55, 0xaa, ID, 0x03, 0x055, 0, 0, 0, 0, 0x0d, 0x0a};
         fillChecksum (buf);
 	serial1Write (buf, CMD_SIZE);
-	serialHex (buf, CMD_SIZE);
+	printHex (buf, CMD_SIZE);
 	delay (100);
         return;
         } else if (digitalRead (BUTTON2) == 0) {
         uint8_t buf[CMD_SIZE] = {0x55, 0xaa, ID, 0x03, 0x056, 0, 0, 0, 0, 0x0d, 0x0a};
         fillChecksum (buf);
 	serial1Write (buf, CMD_SIZE);
-	serialHex (buf, CMD_SIZE);
+	printHex (buf, CMD_SIZE);
 	delay (100);
         return;
         }
@@ -148,7 +148,7 @@ void loop () {
 		buf[7] = (uint8_t)r_speed;
 		fillChecksum (buf);
 		serial1Write (buf, CMD_SIZE);
-		serialHex (buf, CMD_SIZE);
+		printHex (buf, CMD_SIZE);
 		delay (50);
 	}
 	delay (200);

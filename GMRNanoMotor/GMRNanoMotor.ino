@@ -20,8 +20,8 @@
  */
 
 #include <Metro.h>
-#include <Wire.h>
 #include <DFRobot_utility.h>
+#include <utility/iic.h>
 #include <hcr_4wd.h>
 
 //#define _debug
